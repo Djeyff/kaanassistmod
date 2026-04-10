@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MOD_VERSION="v1-2026-04-10"
+MOD_VERSION="v2-2026-04-10"
 
 echo "╔══════════════════════════════════════════════════════════════╗"
 echo "║  OpenClaw KaanAssist Mod  [${MOD_VERSION}]                   ║"
@@ -144,6 +144,45 @@ else
     echo "  ✗ Smart router script not found — using direct codexlb"
 fi
 
-# ── 11. Start gateway ──────────────────────────────────────────
+# ── 11. Start OpenViking memory server ─────────────────────────
+echo "[startup] Configuring OpenViking memory..."
+mkdir -p /root/.openviking/data
+
+OV_PROVIDER="${OPENVIKING_EMBEDDING_PROVIDER:-gemini}"
+OV_API_KEY="${OPENVIKING_EMBEDDING_API_KEY:-${GEMINI_API_KEY:-}}"
+OV_MODEL="${OPENVIKING_EMBEDDING_MODEL:-gemini-embedding-2-preview}"
+OV_DIMENSION="${OPENVIKING_EMBEDDING_DIMENSION:-3072}"
+OV_GROQ_KEY="${GROQ_API_KEY:-}"
+
+if [ -f /opt/openclaw-seed/openviking/ov.conf.template ]; then
+    sed -e "s|__OPENVIKING_EMBEDDING_PROVIDER__|${OV_PROVIDER}|g" \
+        -e "s|__OPENVIKING_EMBEDDING_API_KEY__|${OV_API_KEY}|g" \
+        -e "s|__OPENVIKING_EMBEDDING_MODEL__|${OV_MODEL}|g" \
+        -e "s|__OPENVIKING_EMBEDDING_DIMENSION__|${OV_DIMENSION}|g" \
+        -e "s|__GROQ_API_KEY__|${OV_GROQ_KEY}|g" \
+        /opt/openclaw-seed/openviking/ov.conf.template > /root/.openviking/ov.conf
+    echo "  ✓ ov.conf generated (embed=${OV_PROVIDER}/${OV_MODEL}, vlm=groq/llama-3.3-70b)"
+fi
+
+if [ -n "$OV_API_KEY" ]; then
+    if command -v openviking >/dev/null 2>&1; then
+        openviking serve --config /root/.openviking/ov.conf &
+        OV_PID=$!
+        sleep 2
+        if kill -0 $OV_PID 2>/dev/null; then
+            echo "  ✓ OpenViking running (PID: $OV_PID, port 1933)"
+        else
+            echo "  ✗ OpenViking failed to start — falling back to file-based memory"
+        fi
+    else
+        echo "  ⚠ OpenViking binary not found — trying ov-install..."
+        ov-install --workdir /root/.openclaw 2>&1 | tail -3 || echo "  ✗ ov-install failed"
+    fi
+else
+    echo "  ⚠ No GEMINI_API_KEY set — OpenViking disabled (no embedding provider)"
+    echo "    Set GEMINI_API_KEY to enable (FREE Google AI Studio embeddings)"
+fi
+
+# ── 12. Start gateway ──────────────────────────────────────────
 echo "[startup] [${MOD_VERSION}] Starting gateway..."
 exec openclaw gateway --port 18789 --bind lan --allow-unconfigured --verbose

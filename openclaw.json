@@ -129,6 +129,20 @@
     },
   },
 
+  // ── Browser tooling ─────────────────────────────────────────
+  browser: {
+    enabled: true,
+    executablePath: "/usr/bin/chromium",
+    headless: true,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--single-process",
+    ],
+  },
+
   // ── MCP Servers ───────────────────────────────────────────────
   mcp: {
     servers: {
@@ -142,12 +156,28 @@
     },
   },
 
-  // ── Plugins ───────────────────────────────────────────────────
-  // CRITICAL: NO "allow" key. Empty "entries" means all bundled plugins load.
+  // ── Plugins — NEVER add "allow" key here ──────────────────────
+  // CRITICAL: NO "allow" key — it acts as allowlist for ALL plugins
+  // including bundled ones like Telegram (Issue #57219)
   plugins: {
-    entries: {},
+    entries: {
+      "memory-openviking": {
+        enabled: true,
+        config: {
+          mode: "local",
+          configPath: "/root/.openviking/ov.conf",
+          port: 1933,
+          autoCapture: true,
+          autoRecall: true,
+          recallLimit: 10,
+          captureMode: "semantic",
+        },
+      },
+    },
     slots: {
-      memory: "none",
+      // OpenViking memory — uses FREE Gemini embeddings (GEMINI_API_KEY)
+      // + FREE Groq VLM for summaries (GROQ_API_KEY)
+      memory: "memory-openviking",
     },
   },
 

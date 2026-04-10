@@ -1,0 +1,25 @@
+{
+  "server": {
+    "host": "127.0.0.1",
+    "port": 1933
+  },
+  "storage": {
+    "workspace": "/root/.openviking/data"
+  },
+  "embedding": {
+    "dense": {
+      "provider": "__OPENVIKING_EMBEDDING_PROVIDER__",
+      "api_key": "__OPENVIKING_EMBEDDING_API_KEY__",
+      "model": "__OPENVIKING_EMBEDDING_MODEL__",
+      "dimension": __OPENVIKING_EMBEDDING_DIMENSION__
+    },
+    "max_concurrent": 10
+  },
+  "vlm": {
+    "provider": "litellm",
+    "model": "groq/llama-3.3-70b-versatile",
+    "api_key": "__GROQ_API_KEY__",
+    "temperature": 0.1,
+    "max_retries": 3
+  }
+}
