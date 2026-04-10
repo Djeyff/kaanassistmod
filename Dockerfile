@@ -1,5 +1,5 @@
 # ============================================================================
-# OpenClaw KaanAssist Mod v2 — Full toolkit + OpenViking memory + Chromium
+# OpenClaw KaanAssist Mod v1 — Full toolkit + OpenViking memory + Chromium
 # CRITICAL: Config staged in /opt/openclaw-seed, copied to volume at boot
 # ============================================================================
 FROM node:24-bookworm AS base

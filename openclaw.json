@@ -1,6 +1,6 @@
 {
   // ═══════════════════════════════════════════════════════════════
-  // OpenClaw KaanAssist Mod v2 — Configuration
+  // OpenClaw KaanAssist Mod — Configuration
   // codexlb load balancer → GPT 5.4 (primary) + GPT 5.4 mini (fast)
   // Same architecture as Retena mod, different personality + MCP
   // CRITICAL: NO "plugins.allow" key — it kills bundled plugins
@@ -34,6 +34,41 @@
           },
         ],
       },
+      "groq": {
+        baseUrl: "https://api.groq.com/openai/v1",
+        apiKey: "${GROQ_API_KEY}",
+        api: "openai-completions",
+        models: [
+          {
+            id: "llama-3.3-70b-versatile",
+            name: "Llama 3.3 70B",
+            input: ["text"],
+            contextWindow: 128000,
+            maxTokens: 8192,
+          },
+        ],
+      },
+      "cerebras": {
+        baseUrl: "https://api.cerebras.ai/v1",
+        apiKey: "${CEREBRAS_API_KEY}",
+        api: "openai-completions",
+        models: [
+          {
+            id: "llama3.1-8b",
+            name: "Llama 3.1 8B (Cerebras)",
+            input: ["text"],
+            contextWindow: 8192,
+            maxTokens: 8192,
+          },
+          {
+            id: "llama-3.3-70b",
+            name: "Llama 3.3 70B (Cerebras)",
+            input: ["text"],
+            contextWindow: 128000,
+            maxTokens: 8192,
+          },
+        ],
+      },
     },
   },
 
@@ -44,11 +79,15 @@
         primary: "codexlb/gpt-5.4",
         fallbacks: [
           "codexlb/gpt-5.4-mini",
+          "groq/llama-3.3-70b-versatile",
+          "cerebras/llama-3.3-70b",
         ],
       },
       models: {
         "codexlb/gpt-5.4": { alias: "Big" },
         "codexlb/gpt-5.4-mini": { alias: "Mini" },
+        "groq/llama-3.3-70b-versatile": { alias: "Groq" },
+        "cerebras/llama3.1-8b": { alias: "Fast" },
       },
       workspace: "/root/.openclaw/workspace",
       heartbeat: {
@@ -58,13 +97,12 @@
     },
   },
 
-  // ── Telegram channel (new streaming format) ─────────────────
+  // ── Telegram channel ──────────────────────────────────────────
   channels: {
     telegram: {
       enabled: true,
-      streaming: {
-        mode: "off",
-      },
+      // botToken injected via TELEGRAM_BOT_TOKEN env var
+      streaming: "off",
     },
   },
 
@@ -74,6 +112,10 @@
     reset: {
       mode: "idle",
       idleMinutes: 120,
+    },
+    compaction: {
+      enabled: true,
+      threshold: 0.65,
     },
   },
 
@@ -87,16 +129,18 @@
     },
   },
 
-  // ── Browser (flags via CHROMIUM_FLAGS env var) ───────────────
+  // ── Browser tooling ─────────────────────────────────────────
   browser: {
     enabled: true,
     executablePath: "/usr/bin/chromium",
     headless: true,
-  },
-
-  // ── Web search (top-level) ──────────────────────────────────
-  webSearch: {
-    provider: "gemini",
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--single-process",
+    ],
   },
 
   // ── MCP Servers ───────────────────────────────────────────────
@@ -113,19 +157,33 @@
   },
 
   // ── Plugins — NEVER add "allow" key here ──────────────────────
+  // CRITICAL: NO "allow" key — it acts as allowlist for ALL plugins
+  // including bundled ones like Telegram (Issue #57219)
   plugins: {
-    enabled: true,
+    entries: {
+      "memory-openviking": {
+        enabled: true,
+        config: {
+          mode: "local",
+          configPath: "/root/.openviking/ov.conf",
+          port: 1933,
+          autoCapture: true,
+          autoRecall: true,
+          recallLimit: 10,
+          captureMode: "semantic",
+        },
+      },
+    },
     slots: {
-      // Set to "none" for clean boot. Bot installs OpenViking via ov-install post-deploy.
-      memory: "none",
+      // OpenViking memory — uses FREE Gemini embeddings (GEMINI_API_KEY)
+      // + FREE Groq VLM for summaries (GROQ_API_KEY)
+      memory: "memory-openviking",
     },
   },
 
-  // ── Environment variables ─────────────────────────────────────
-  env: {
-    vars: {
-      CLAUDE_CODE_USE_OPENAI: "1",
-      CHROMIUM_FLAGS: "--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage --disable-gpu --single-process",
-    },
+  // ── Web search (Gemini free tier) ─────────────────────────────
+  webSearch: {
+    provider: "gemini",
+    apiKey: "${GEMINI_API_KEY}",
   },
 }
